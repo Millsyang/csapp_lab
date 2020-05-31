@@ -163,7 +163,7 @@ int tmin(void) {
  *   Rating: 1
  */
 int isTmax(int x) {
-  /* only 2*Tamx+1 == -1 and 2*0xfffffffff == -2*/
+  /* only 2*Tamx+1 == -1 and 2*0xfffffffff+1 == -1*/
   return !!~x & !(~(x+x+1));
 }
 /* 
@@ -254,8 +254,40 @@ int logicalNeg(int x) {
  *  Max ops: 90
  *  Rating: 4
  */
-int howManyBits(int x) {
-  return 0;
+int howManyBits(int x)
+{
+  /* 看完大神们的题解，我的代码是真的僵硬。。。*/
+  /* if x <0 , sign_x = 0xffffffff,else 0x0 */
+  int sign_x = (x >> 31);
+  int true_x = (sign_x & ~x) + (~sign_x & x);
+  int z_flag = ~((!!true_x) << 31 >> 31) /*0xffffffff if true_x is 0 ,else 0*/;
+  /* binary search */
+  int beg = 0, en = 31;
+  int mid = 15;
+  int flag = ((true_x + ~(1 << 15) + 1) >> 31); /*0 if true_x - 2**res > 0 else 0xffffffff*/
+  beg = (mid & ~flag) + (beg & flag);
+  en = (mid & flag) + (en & ~flag);
+  mid = ((beg + en) >> 1); 
+
+  flag = ((true_x + ~(1 << mid) + 1) >> 31);
+  beg = (mid & ~flag) + (beg & flag);
+  en = (mid & flag) + (en & ~flag);
+  mid = ((beg + en) >> 1); 
+
+  flag = ((true_x + ~(1 << mid) + 1) >> 31);
+  beg = (mid & ~flag) + (beg & flag);
+  en = (mid & flag) + (en & ~flag);
+  mid = ((beg + en) >> 1); 
+
+  flag = ((true_x + ~(1 << mid) + 1) >> 31);
+  beg = (mid & ~flag) + (beg & flag);
+  en = (mid & flag) + (en & ~flag);
+  mid = ((beg + en) >> 1);
+
+  flag = ((true_x + ~(1 << mid) + 1) >> 31);
+  mid = (mid + (beg & flag) + (en & ~flag)) >> 1;
+
+  return (z_flag & 1) + (~z_flag & (mid + 2));
 }
 //float
 /* 
