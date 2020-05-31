@@ -1,7 +1,6 @@
 ***
 CSAPP LAB   
-Log during solving it   
-@author:Lightning   
+Log during solving it    
 Environment:    
 sys:kali 2019-3
 ***
