@@ -163,7 +163,8 @@ int tmin(void) {
  *   Rating: 1
  */
 int isTmax(int x) {
-  return (!(x>>31)) & ((x+1)>>31);
+  /* only 2*Tamx+1 == -1 and 2*0xfffffffff == -2*/
+  return !!~x & !(~(x+x+1));
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
@@ -174,7 +175,8 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
-  return 2;
+  /* x | 0x55555555 == 0xffffffff*/
+  return !(~(0x55 | 0x55 << 8 | 0x55 << 16 | 0x55 << 24 | x));
 }
 /* 
  * negate - return -x 
@@ -184,7 +186,8 @@ int allOddBits(int x) {
  *   Rating: 2
  */
 int negate(int x) {
-  return 2;
+
+  return ~x+1;
 }
 //3
 /* 
@@ -197,7 +200,8 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return 2;
+  /* if it is positive, then x-0x30 is positive and 0x39-x positive */
+  return !((x>>31) | (x+(~0x30+1))>>31 | (0x39+(~x+1))>>31);
 }
 /* 
  * conditional - same as x ? y : z 
@@ -207,7 +211,9 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;
+  /* if x==0,make multi_n == 0x0,else make multi_n == 0xffffffff*/
+  int multi_n = ((!!x) << 31) >> 31;
+  return ((~multi_n) & z) + (multi_n & y);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -217,7 +223,11 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+  /*if x < 0 and y > 0,return 1 else if xy>=0,and y-x>=0 return 1*/
+  int sign_x = x >> 31;
+  int sign_y = y >> 31;
+  //  return ((~(((y+(~x+1)) >> 31)) & ~(sign_x ^ sign_y)) | flag) & 1;
+   return ~(((((y + (~x + 1)) >> 31)) | (sign_x ^ sign_y)) & (~sign_x|sign_y)) & 1;
 }
 //4
 /* 
@@ -229,7 +239,8 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+  /* only 0 and -0's sign bit are both 0*/
+  return ~(x >> 31 | (~x+1) >> 31) & 1;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
