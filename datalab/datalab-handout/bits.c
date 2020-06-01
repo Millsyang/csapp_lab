@@ -302,7 +302,22 @@ int howManyBits(int x)
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
-  return 2;
+  unsigned exp = (uf >> 23) & 0xff; //get exponent
+  unsigned frac = uf & 0x7fffff;
+  if (exp == 0xff && frac) //exp==0xff and frac!=0 means uf is NaN
+    return uf;
+  if(!exp)             //if exp is 0,then frac*2
+    frac = frac << 1;
+  else                 //else exp+1
+  {
+    exp ++;
+    if (exp & 0x100)    //exp overflow
+    {
+      exp = 255;
+      frac = 0;
+    }
+  }
+  return (uf & 0x80000000)+(exp<<23)+frac;
 }
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
@@ -316,8 +331,28 @@ unsigned floatScale2(unsigned uf) {
  *   Max ops: 30
  *   Rating: 4
  */
-int floatFloat2Int(unsigned uf) {
-  return 2;
+int floatFloat2Int(unsigned uf)
+{
+  /*这里一开始理解错了舍入规则，所以判断条件有点小毛病，但不影响结果*/
+  unsigned intBits;
+  unsigned firstDecimal;
+  int sign = uf & 0x80000000;
+  unsigned exp = (uf >> 23) & 0xff; //get exponent
+  unsigned frac = uf & 0x7fffff;
+  unsigned frac_plus1 = frac | 0x800000;
+  unsigned _bias = exp - 125;
+  intBits = (frac_plus1 << 7) >> (32 - _bias);
+  if (exp >= 158) //exp-127 >= 31
+    return 0x80000000;
+  else if (exp < 126) //exp-127 < -1
+    return 0;
+  else if (_bias <= 24)
+  {
+    firstDecimal = (frac_plus1 >> (24 - _bias)) & 1;
+    /*only watch the first bit after decimal points when rounding*/
+    intBits += (firstDecimal & (intBits & 1));
+  }
+  return sign ? (~intBits + 1) : intBits;
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
@@ -333,5 +368,12 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
+    if(x > 127)  // too big
+      return 0x7f800000;
+    else if(x < -149)  // too small
+      return 0;
+    else if(x < -126)  //unnormalized
+      return 1 << (x + 149);
+    else               //normalized
+      return (x + 127) << 23; 
 }
