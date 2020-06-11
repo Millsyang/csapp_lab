@@ -61,7 +61,9 @@ solution:apt-get install gcc-multilibs
    0x08048b59 <+17>:	push   eax
    0x08048b5a <+18>:	push   edx
    0x08048b5b <+19>:	call   0x8048fd8 <read_six_numbers> ;调用这个函数，这个函数如果通不过也会引爆炸弹
-   0x08048b60 <+24>:	add    esp,0x10
+   0x08048b60 <+24>:	add    esp,0x10 ;
+   /* 这一段的代码逻辑为输入的第一个数字为1 后面的每个数字是前一个数字*2 *3 ...依此类推 */
+   /* 不满足条件炸弹就会引爆 */
    0x08048b63 <+27>:	cmp    DWORD PTR [ebp-0x18],0x1
    0x08048b67 <+31>:	je     0x8048b6e <phase_2+38>
    0x08048b69 <+33>:	call   0x80494fc <explode_bomb>
@@ -75,6 +77,7 @@ solution:apt-get install gcc-multilibs
    0x08048b88 <+64>:	inc    ebx
    0x08048b89 <+65>:	cmp    ebx,0x5
    0x08048b8c <+68>:	jle    0x8048b76 <phase_2+46>
+   /* 一直到这里其实是一个循环 */
    0x08048b8e <+70>:	lea    esp,[ebp-0x28]
    0x08048b91 <+73>:	pop    ebx
    0x08048b92 <+74>:	pop    esi
@@ -100,7 +103,7 @@ solution:apt-get install gcc-multilibs
    0x08048ff7 <+31>:	push   eax
    0x08048ff8 <+32>:	push   edx
    0x08048ff9 <+33>:	push   0x8049b1b
-   0x08048ffe <+38>:	push   ecx
+   0x08048ffe <+38>:	push   ecx 
    0x08048fff <+39>:	call   0x8048860 <sscanf@plt>
    0x08049004 <+44>:	add    esp,0x20
    0x08049007 <+47>:	cmp    eax,0x5
@@ -110,8 +113,26 @@ solution:apt-get install gcc-multilibs
    0x08049013 <+59>:	pop    ebp
    0x08049014 <+60>:	ret 
 
-要求输入六个数字，然后满足一定的规则
-答案其实就是1 2！ 3！ 4！ 5！ 6！
-细节以后再说吧
 ```
+要求输入六个数字，然后满足一定的规则
+调用sscanf前的栈帧状态如下:
+地址 | 值
+---|---
+0xffffd2a8  | main栈帧的ebp
+0xffffd2a4  | 
+0xffffd2a0  | 
+0xffffd29c  | 
+0xffffd298  | 
+0xffffd294  | 
+0xffffd290  |
+...         |
+0xffffd240  | 0xffff2da4
+0xffffd240  | ...
+0xffffd240  | ...
+0xffffd240  | ...
+0xffffd240  | ...
+0xffffd240  | 0xffff2d90
+0xffffd244  | "%d %d %d %d %d %d %d" 
+0xffffd240  | 输入的字符串
 
+即输入六个数字到对应的六个地址，应该是phase_2的局部变量。
