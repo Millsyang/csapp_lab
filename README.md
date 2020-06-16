@@ -136,3 +136,29 @@ solution:apt-get install gcc-multilibs
 0xffffd240  | 输入的字符串
 
 即输入六个数字到对应的六个地址，应该是phase_2的局部变量。
+
+## phase_3
+格式化字符串为%d %c % d。
+一个switch语句  第一个数字应该是swicth的跳转条件
+后面的一个字符，一个数字对应限制条件(本阶段答案不唯一)
+0 q 777 和 7 b 524都可，还有其他答案，我没试
+
+## phase_4
+输入一个数字，对其计算func(n)，使func(n)==0x37,观察func(n)得逻辑可知它是一个Fibonacci数列
+故数字为9
+
+## phase_5
+输入6个字母,有一个array，取字母ascii码得低4位为其索引，得到另外6个字母，使其为giants
+输入的字符串为opekma
+
+## phase_6
+输入6个数字，有一个长度为全局链表，结构大概是
+```
+struct node{
+    int;
+    int;
+    struct node* next;
+}
+```
+输入的六个字母让链表重新排序，让链表的第一个域按从大到小排列即可
+答案：4 2 6 3 1 5
