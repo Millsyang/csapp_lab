@@ -8,6 +8,7 @@
  * on a 1KB direct mapped cache with a block size of 32 bytes.
  */ 
 #include <stdio.h>
+#include <math.h>
 #include "cachelab.h"
 
 int is_transpose(int M, int N, int A[N][M], int B[M][N]);
@@ -21,7 +22,63 @@ int is_transpose(int M, int N, int A[N][M], int B[M][N]);
  */
 char transpose_submit_desc[] = "Transpose submission";
 void transpose_submit(int M, int N, int A[N][M], int B[M][N])
-{
+{	
+    int i, j;
+    int row;
+    int x0,x1,x2,x3;
+    int y0,y1,y2,y3;
+    //int n,m;
+    //n = ceil(N / 8);
+    //m = ceil(M / 8);
+
+    for (i = 0; i < N; i += 8) {
+        for (j = 0; j < M; j += 8) {
+	    for(row = i;row < i + 4;row++){
+	    	x0 = A[row][j];
+		x1 = A[row][j + 1];
+		x2 = A[row][j + 2];
+		x3 = A[row][j + 3];
+		y0 = A[row + 4][j];
+		y1 = A[row + 4][j + 1];
+		y2 = A[row + 4][j + 2];
+		y3 = A[row + 4][j + 3];
+		B[j][row] = x0;
+		B[j + 1][row] = x1;
+		B[j + 2][row] = x2;
+		B[j + 3][row] = x3;
+		B[j][row + 4] = y0;
+		B[j + 1][row + 4] = y1;
+		B[j + 2][row + 4] = y2;
+		B[j + 3][row + 4] = y3;
+	    }
+
+	    for(row = i;row < i + 4;row++){
+	    	x0 = A[row][j + 4];
+		x1 = A[row][j + 5];
+		x2 = A[row][j + 6];
+		x3 = A[row][j + 7];
+		y0 = A[row + 4][j + 4];
+		y1 = A[row + 4][j + 5];
+		y2 = A[row + 4][j + 6];
+		y3 = A[row + 4][j + 7];
+		B[j + 4][row] = x0;
+		B[j + 5][row] = x1;
+		B[j + 6][row] = x2;
+		B[j + 7][row] = x3;
+		B[j + 4][row + 4] = y0;
+		B[j + 5][row + 4] = y1;
+		B[j + 6][row + 4] = y2;
+		B[j + 7][row + 4] = y3;
+	    }
+		/*
+	    for(row = i;row < i + 4;row++){
+	    	for(col = j;col < j + 4;col++){
+		    B[col][row] = A[row][col];
+		}
+	    }
+	    */
+	}
+    }    
 }
 
 /* 
@@ -35,14 +92,38 @@ void transpose_submit(int M, int N, int A[N][M], int B[M][N])
 char trans_desc[] = "Simple row-wise scan transpose";
 void trans(int M, int N, int A[N][M], int B[M][N])
 {
-    int i, j, tmp;
+    int i, j, x, y;
+    int x1,x2,x3,x4,x5,x6,x7,x8;
 
-    for (i = 0; i < N; i++) {
-        for (j = 0; j < M; j++) {
-            tmp = A[i][j];
-            B[j][i] = tmp;
-        }
-    }    
+    for(i=0;i<N;i+=8){
+			for(j=0;j<M;j+=8){
+				for(x=i;x<i+8;x++){
+					if(i == j){
+						x1 = A[x][j];		
+						x2 = A[x][j+1];	
+						x3 = A[x][j+2];	
+						x4 = A[x][j+3];	
+						x5 = A[x][j+4];	
+						x6 = A[x][j+5];	
+						x7 = A[x][j+6];	
+						x8 = A[x][j+7];	
+						
+						B[j][x] = x1;		
+						B[j+1][x] = x2;	
+						B[j+2][x] = x3;	
+						B[j+3][x] = x4;	
+						B[j+4][x] = x5;	
+						B[j+5][x] = x6;	
+						B[j+6][x] = x7;	
+						B[j+7][x] = x8;
+						continue;						
+					}	
+					for(y=j;y<j+8;y++){
+						B[y][x]=A[x][y];
+					}
+				}
+			}
+		}
 
 }
 

@@ -87,7 +87,7 @@ int main(int argc,char* argv[])
     }
     
     simulator(cacheTable,recordList);
-    test();
+    //test();
     printSummary(hits,misses,envictions);
     return 0;
 }
